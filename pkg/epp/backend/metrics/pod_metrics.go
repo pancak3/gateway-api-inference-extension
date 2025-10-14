@@ -110,6 +110,7 @@ func (pm *podMetrics) startRefreshLoop(ctx context.Context) {
 }
 
 func (pm *podMetrics) refreshMetrics() error {
+	fmt.Println("Refreshing metrics for pod", pm.GetPod())
 	pool, err := pm.ds.PoolGet()
 	if err != nil {
 		// No inference pool or not initialize.
