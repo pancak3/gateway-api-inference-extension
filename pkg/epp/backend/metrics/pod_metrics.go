@@ -93,6 +93,11 @@ func (pm *podMetrics) startRefreshLoop(ctx context.Context) {
 }
 
 func (pm *podMetrics) refreshMetrics() error {
+	pool, err := pm.ds.PoolGet()
+	if err != nil {
+		// No inference pool or not initialize.
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), fetchMetricsTimeout)
 	defer cancel()
 	updated, err := pm.pmc.FetchMetrics(ctx, pm.GetPod(), pm.GetMetrics())
