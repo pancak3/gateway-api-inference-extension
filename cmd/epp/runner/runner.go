@@ -63,6 +63,7 @@ import (
 	fcregistry "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/flowcontrol/registry"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics/collectors"
+	schedrecorder "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics/recorder"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/plugins"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/requestcontrol"
 	testresponsereceived "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/requestcontrol/plugins/test/responsereceived"
@@ -349,6 +350,31 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		setupLog.Info("Experimental Flow Control layer is disabled, using legacy admission control")
 		admissionController = requestcontrol.NewLegacyAdmissionController(saturationDetector)
+	}
+
+	if cfg, cfgErr := schedrecorder.NewEnvConfigProvider().Config(ctx); cfgErr != nil {
+		if !errors.Is(cfgErr, schedrecorder.ErrConfigNotFound) {
+			setupLog.Error(cfgErr, "Failed to load scheduler recorder configuration")
+		} else {
+			setupLog.V(1).Info("Scheduler recorder configuration not found; skipping persistence")
+		}
+	} else {
+		rec, recErr := schedrecorder.NewRecorder(ctx, cfg)
+		if recErr != nil {
+			setupLog.Error(recErr, "Failed to initialize scheduler recorder")
+		} else {
+			r.requestControlConfig.WithSchedulerRecorder(rec)
+			defer func(rec schedrecorder.Recorder) {
+				if closeErr := rec.Close(context.Background()); closeErr != nil {
+					setupLog.Error(closeErr, "Failed to close scheduler recorder")
+				}
+			}(rec)
+		}
+		redactedCfg := cfg
+		if redactedCfg.Password != "" {
+			redactedCfg.Password = "REDACTED"
+		}
+		setupLog.Info("Initialized scheduler recorder (postgresql)", "config", redactedCfg)
 	}
 
 	director := requestcontrol.NewDirectorWithConfig(

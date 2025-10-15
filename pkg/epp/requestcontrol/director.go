@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/gateway-api-inference-extension/apix/v1alpha2"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/backend"
@@ -34,6 +35,7 @@ import (
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/handlers"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metadata"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics"
+	schedrecorder "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics/recorder"
 	schedulingtypes "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/scheduling/types"
 	errutil "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/util/error"
 	logutil "sigs.k8s.io/gateway-api-inference-extension/pkg/epp/util/logging"
@@ -65,11 +67,15 @@ func NewDirectorWithConfig(
 	config *Config,
 ) *Director {
 	return &Director{
-		datastore:             datastore,
 		scheduler:             scheduler,
-		admissionController:   admissionController,
 		requestControlPlugins: *config,
-		defaultPriority:       0, // define default priority explicitly
+		datastore:           datastore,
+		scheduler:           scheduler,
+		admissionController: admissionController,
+		preRequestPlugins:   config.preRequestPlugins,
+		postResponsePlugins: config.postResponsePlugins,
+		schedulerRecorder:   config.schedulerRecorder,
+		defaultPriority:     0, // define default priority explicitly
 	}
 }
 
@@ -83,18 +89,66 @@ func NewDirectorWithConfig(
 // - Preparing the request context for the Envoy ext_proc filter to route the request.
 // - Running PostResponse plugins.
 type Director struct {
+<<<<<<< HEAD
 	datastore             Datastore
 	scheduler             Scheduler
 	admissionController   AdmissionController
 	requestControlPlugins Config
+=======
+	datastore           Datastore
+	scheduler           Scheduler
+	admissionController AdmissionController
+	preRequestPlugins   []PreRequest
+	postResponsePlugins []PostResponse
+	schedulerRecorder   schedrecorder.Recorder
+>>>>>>> 49419fa (add postgresql to record scheduling metrics)
 	// we just need a pointer to an int variable since priority is a pointer in InferenceObjective
 	// no need to set this in the constructor, since the value we want is the default int val
 	// and value types cannot be nil
 	defaultPriority int
 }
 
+<<<<<<< HEAD
 // getInferenceObjective fetches the inferenceObjective from the datastore otherwise creates a new one based on reqCtx.
 func (d *Director) getInferenceObjective(ctx context.Context, reqCtx *handlers.RequestContext) *v1alpha2.InferenceObjective {
+=======
+// HandleRequest orchestrates the request lifecycle.
+// It always returns the requestContext even in the error case, as the request context is used in error handling.
+func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestContext) (*handlers.RequestContext, error) {
+	logger := log.FromContext(ctx)
+	var scheduleRecord *schedrecorder.SchedulerRecord
+	if d.schedulerRecorder != nil {
+		scheduleRecord = &schedrecorder.SchedulerRecord{ReceiveRequestAt: time.Now().UTC().UnixMicro()}
+	}
+
+	// Parse Request, Resolve Target Models, and Determine Parameters
+	requestBodyMap := reqCtx.Request.Body
+	var ok bool
+	reqCtx.IncomingModelName, ok = requestBodyMap["model"].(string)
+
+	if !ok {
+		return reqCtx, errutil.Error{Code: errutil.BadRequest, Msg: "model not found in request body"}
+	}
+	if reqCtx.TargetModelName == "" {
+		// Default to incoming model name
+		reqCtx.TargetModelName = reqCtx.IncomingModelName
+	}
+	reqCtx.Request.Body["model"] = reqCtx.TargetModelName
+
+	requestBody, err := requtil.ExtractRequestBody(reqCtx.Request.Body)
+	if err != nil {
+		return reqCtx, errutil.Error{Code: errutil.BadRequest, Msg: fmt.Errorf("failed to extract request data: %w", err).Error()}
+	}
+	logger.V(logutil.VERBOSE).Info("Request body extracted", "requestBody", fmt.Sprintf("%+v", requestBody))
+	if scheduleRecord != nil && requestBody != nil && requestBody.ChatCompletions != nil {
+		// print requestBody structiure for debugging
+		// Use client-side request ID for tracking the request lifecycle in the recorder
+		// If not provided, the recorder will not persist any data for this request.
+		scheduleRecord.RequestID = requestBody.ChatCompletions.ClientSideID
+
+	}
+
+>>>>>>> 49419fa (add postgresql to record scheduling metrics)
 	infObjective := d.datastore.ObjectiveGet(reqCtx.ObjectiveKey)
 	if infObjective == nil {
 		log.FromContext(ctx).V(logutil.VERBOSE).Info("No associated InferenceObjective found, using default", "objectiveKey", reqCtx.ObjectiveKey)
@@ -170,6 +224,7 @@ func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestCo
 	}
 	snapshotOfCandidatePods := d.toSchedulerPodMetrics(candidatePods)
 
+<<<<<<< HEAD
 	// Prepare per request data by running PrepareData plugins.
 	if d.runPrepareDataPlugins(ctx, reqCtx.SchedulingRequest, snapshotOfCandidatePods) != nil {
 		// Don't fail the request if PrepareData plugins fail.
@@ -183,13 +238,26 @@ func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestCo
 	}
 
 	result, err := d.scheduler.Schedule(ctx, reqCtx.SchedulingRequest, snapshotOfCandidatePods)
+=======
+	if scheduleRecord != nil {
+		scheduleRecord.SchedulerStartAt = time.Now().UTC().UnixMicro()
+	}
+	result, err := d.scheduler.Schedule(ctx, reqCtx.SchedulingRequest, d.toSchedulerPodMetrics(candidatePods))
+>>>>>>> 49419fa (add postgresql to record scheduling metrics)
 	if err != nil {
 		return reqCtx, errutil.Error{Code: errutil.InferencePoolResourceExhausted, Msg: fmt.Errorf("failed to find target pod: %w", err).Error()}
+	}
+	if scheduleRecord != nil {
+		scheduleRecord.ServiceSelectedAt = time.Now().UTC().UnixMicro()
+		if actor := extractSelectedActor(result); actor != "" {
+			scheduleRecord.SelectedActor = actor
+		}
 	}
 
 	// Prepare Request (Populates RequestContext and call PreRequest plugins)
 	// Insert target endpoint to instruct Envoy to route requests to the specified target pod and attach the port number.
 	// Invoke PreRequest registered plugins.
+	d.persistSchedulerRecord(ctx, logger, scheduleRecord)
 	reqCtx, err = d.prepareRequest(ctx, reqCtx, result)
 	if err != nil {
 		return reqCtx, err
@@ -401,5 +469,41 @@ func (d *Director) runResponseCompletePlugins(ctx context.Context, request *sche
 		plugin.ResponseComplete(ctx, request, response, targetPod)
 		metrics.RecordPluginProcessingLatency(ResponseCompleteExtensionPoint, plugin.TypedName().Type, plugin.TypedName().Name, time.Since(before))
 		loggerDebug.Info("Completed running ResponseComplete plugin successfully", "plugin", plugin.TypedName())
+	}
+}
+
+func extractSelectedActor(result *schedulingtypes.SchedulingResult) string {
+	if result == nil {
+		return ""
+	}
+	profile, ok := result.ProfileResults[result.PrimaryProfileName]
+	if !ok || profile == nil {
+		return ""
+	}
+	if len(profile.TargetPods) == 0 || profile.TargetPods[0] == nil {
+		return ""
+	}
+	pod := profile.TargetPods[0].GetPod()
+	if pod == nil {
+		return ""
+	}
+	return pod.Address
+}
+
+func (d *Director) persistSchedulerRecord(ctx context.Context, logger logr.Logger, record *schedrecorder.SchedulerRecord) {
+	if d.schedulerRecorder == nil || record == nil {
+		return
+	}
+	if record.RequestID == "" {
+		logger.V(logutil.DEBUG).Info("Skipping scheduler recorder persistence due to empty client-side request id")
+		return
+	}
+	if record.SelectedActor == "" {
+		logger.V(logutil.DEBUG).Info("Skipping scheduler recorder persistence due to missing selected actor")
+		return
+	}
+
+	if err := d.schedulerRecorder.UpsertSchedulerRecord(ctx, *record); err != nil {
+		logger.Error(err, "Failed to persist scheduler lifecycle record")
 	}
 }
