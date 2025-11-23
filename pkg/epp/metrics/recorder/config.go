@@ -20,12 +20,18 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 const (
 	defaultSchema = "metrics"
 	defaultTable  = "scheduler"
 	defaultPort   = "5432"
+
+	defaultQueueCapacity = 4096
+	defaultBatchSize     = 128
+	defaultFlushInterval = time.Second
+	defaultFlushTimeout  = 5 * time.Second
 )
 
 var (
@@ -42,6 +48,18 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Port == "" {
 		c.Port = defaultPort
+	}
+	if c.QueueCapacity <= 0 {
+		c.QueueCapacity = defaultQueueCapacity
+	}
+	if c.BatchSize <= 0 {
+		c.BatchSize = defaultBatchSize
+	}
+	if c.FlushInterval <= 0 {
+		c.FlushInterval = defaultFlushInterval
+	}
+	if c.FlushTimeout <= 0 {
+		c.FlushTimeout = defaultFlushTimeout
 	}
 }
 
@@ -67,6 +85,22 @@ func (c Config) Validate() error {
 
 	if len(missing) > 0 {
 		return fmt.Errorf("missing recorder configuration values: %s", strings.Join(missing, ", "))
+	}
+
+	if c.QueueCapacity <= 0 {
+		return fmt.Errorf("queue capacity must be positive; got %d", c.QueueCapacity)
+	}
+	if c.BatchSize <= 0 {
+		return fmt.Errorf("batch size must be positive; got %d", c.BatchSize)
+	}
+	if c.FlushInterval <= 0 {
+		return fmt.Errorf("flush interval must be positive; got %s", c.FlushInterval)
+	}
+	if c.FlushTimeout <= 0 {
+		return fmt.Errorf("flush timeout must be positive; got %s", c.FlushTimeout)
+	}
+	if c.FlushTimeout < c.FlushInterval/2 {
+		return fmt.Errorf("flush timeout %s must be at least half of flush interval %s", c.FlushTimeout, c.FlushInterval)
 	}
 
 	return nil

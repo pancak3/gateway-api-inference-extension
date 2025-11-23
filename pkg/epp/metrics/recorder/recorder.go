@@ -16,7 +16,10 @@ limitations under the License.
 
 package recorder
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 const (
 	// EnvDBURL is the environment variable containing the database host or URL.
@@ -33,6 +36,14 @@ const (
 	EnvDBTable = "INFERENCE_DB_TABLE"
 	// EnvDBPort is the environment variable containing the port that exposes the PostgreSQL service.
 	EnvDBPort = "INFERENCE_DB_PORT"
+	// EnvQueueCapacity overrides the in-memory queue capacity used to buffer scheduler records.
+	EnvQueueCapacity = "INFERENCE_DB_QUEUE_CAPACITY"
+	// EnvBatchSize overrides the maximum number of records sent in each batch write.
+	EnvBatchSize = "INFERENCE_DB_BATCH_SIZE"
+	// EnvFlushInterval overrides how often buffered records are flushed if the batch size is not reached.
+	EnvFlushInterval = "INFERENCE_DB_FLUSH_INTERVAL"
+	// EnvFlushTimeout overrides the timeout applied to each batch flush operation.
+	EnvFlushTimeout = "INFERENCE_DB_FLUSH_TIMEOUT"
 )
 
 // Config aggregates the connection parameters required to establish a reusable database connection.
@@ -44,6 +55,11 @@ type Config struct {
 	Schema   string
 	Table    string
 	Port     string
+
+	QueueCapacity int
+	BatchSize     int
+	FlushInterval time.Duration
+	FlushTimeout  time.Duration
 }
 
 // ConfigProvider extracts recorder configuration from a backing store such as the process environment.

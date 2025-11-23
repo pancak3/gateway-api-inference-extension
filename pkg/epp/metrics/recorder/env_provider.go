@@ -18,8 +18,11 @@ package recorder
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // NewEnvConfigProvider returns a ConfigProvider that reads values from process environment variables.
@@ -61,6 +64,26 @@ func (envConfigProvider) Config(_ context.Context) (Config, error) {
 		cfg.Port = value
 		anySet = true
 	}
+	if value, ok := lookupEnvTrimmed(EnvQueueCapacity); ok {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.QueueCapacity = parsed
+		}
+	}
+	if value, ok := lookupEnvTrimmed(EnvBatchSize); ok {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			cfg.BatchSize = parsed
+		}
+	}
+	if value, ok := lookupEnvTrimmed(EnvFlushInterval); ok {
+		if duration, err := parseDuration(value); err == nil {
+			cfg.FlushInterval = duration
+		}
+	}
+	if value, ok := lookupEnvTrimmed(EnvFlushTimeout); ok {
+		if duration, err := parseDuration(value); err == nil {
+			cfg.FlushTimeout = duration
+		}
+	}
 
 	if !anySet {
 		return Config{}, ErrConfigNotFound
@@ -86,4 +109,14 @@ func lookupEnvTrimmed(key string) (string, bool) {
 	}
 
 	return trimmed, true
+}
+
+func parseDuration(value string) (time.Duration, error) {
+	if duration, err := time.ParseDuration(value); err == nil {
+		return duration, nil
+	}
+	if millis, err := strconv.Atoi(value); err == nil {
+		return time.Duration(millis) * time.Millisecond, nil
+	}
+	return 0, fmt.Errorf("invalid duration %q", value)
 }

@@ -23,13 +23,32 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"k8s.io/klog/v2"
+)
+
+var (
+	// ErrRecorderQueueFull indicates the recorder's buffer is saturated and cannot accept more records.
+	ErrRecorderQueueFull = errors.New("metrics recorder queue full")
+	// ErrRecorderStopped indicates the recorder has been shut down and no longer accepts records.
+	ErrRecorderStopped = errors.New("metrics recorder stopped")
 )
 
 type postgresRecorder struct {
-	pool      *pgxpool.Pool
-	upsertSQL string
+	pool          *pgxpool.Pool
+	upsertSQL     string
+	queue         chan SchedulerRecord
+	batchSize     int
+	flushInterval time.Duration
+	flushTimeout  time.Duration
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
+	stopped       atomic.Bool
 }
 
 // NewRecorder establishes a pooled PostgreSQL connection using the provided config.
@@ -54,15 +73,28 @@ func NewRecorder(ctx context.Context, cfg Config) (Recorder, error) {
 		return nil, fmt.Errorf("failed to connect to recorder database: %w", err)
 	}
 
-	return &postgresRecorder{
-		pool:      pool,
-		upsertSQL: buildUpsertSQL(cfg.Schema, cfg.Table),
-	}, nil
+	runCtx, cancel := context.WithCancel(ctx)
+	rec := &postgresRecorder{
+		pool:          pool,
+		upsertSQL:     buildUpsertSQL(cfg.Schema, cfg.Table),
+		queue:         make(chan SchedulerRecord, cfg.QueueCapacity),
+		batchSize:     cfg.BatchSize,
+		flushInterval: cfg.FlushInterval,
+		flushTimeout:  cfg.FlushTimeout,
+		cancel:        cancel,
+	}
+	rec.wg.Add(1)
+	go rec.run(runCtx)
+
+	return rec, nil
 }
 
 func (r *postgresRecorder) UpsertSchedulerRecord(ctx context.Context, record SchedulerRecord) error {
 	if r == nil || r.pool == nil {
 		return errors.New("recorder not initialized")
+	}
+	if r.stopped.Load() {
+		return ErrRecorderStopped
 	}
 
 	if strings.TrimSpace(record.RequestID) == "" {
@@ -81,25 +113,119 @@ func (r *postgresRecorder) UpsertSchedulerRecord(ctx context.Context, record Sch
 		return errors.New("recorder: selected actor must not be empty")
 	}
 
-	_, err := r.pool.Exec(ctx, r.upsertSQL,
-		record.RequestID,
-		record.ReceiveRequestAt,
-		record.SchedulerStartAt,
-		record.ServiceSelectedAt,
-		record.SelectedActor,
-	)
-	if err != nil {
-		return fmt.Errorf("recorder upsert failed: %w", err)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case r.queue <- record:
+		return nil
+	default:
+		return ErrRecorderQueueFull
 	}
+}
 
+func (r *postgresRecorder) Close(ctx context.Context) error {
+	if r == nil {
+		return nil
+	}
+	if r.stopped.Swap(true) {
+		return nil
+	}
+	if r.cancel != nil {
+		r.cancel()
+	}
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if r.pool != nil {
+		r.pool.Close()
+	}
 	return nil
 }
 
-func (r *postgresRecorder) Close(context.Context) error {
-	if r == nil || r.pool == nil {
-		return nil
+func (r *postgresRecorder) run(ctx context.Context) {
+	defer r.wg.Done()
+	ticker := time.NewTicker(r.flushInterval)
+	defer ticker.Stop()
+
+	batch := make([]SchedulerRecord, 0, r.batchSize)
+	flush := func() {
+		if len(batch) == 0 {
+			return
+		}
+		flushCtx, cancel := context.WithTimeout(context.Background(), r.flushTimeout)
+		if err := r.flushBatch(flushCtx, batch); err != nil {
+			klog.Background().Error(err, "scheduler recorder flush failed", "batchSize", len(batch))
+		}
+		cancel()
+		batch = batch[:0]
 	}
-	r.pool.Close()
+
+	for {
+		select {
+		case <-ctx.Done():
+			for {
+				select {
+				case rec, ok := <-r.queue:
+					if !ok {
+						flush()
+						return
+					}
+					batch = append(batch, rec)
+					if len(batch) >= r.batchSize {
+						flush()
+					}
+				default:
+					flush()
+					return
+				}
+			}
+		case rec, ok := <-r.queue:
+			if !ok {
+				flush()
+				return
+			}
+			batch = append(batch, rec)
+			if len(batch) >= r.batchSize {
+				flush()
+			}
+		case <-ticker.C:
+			flush()
+		}
+	}
+}
+
+func (r *postgresRecorder) flushBatch(ctx context.Context, batch []SchedulerRecord) error {
+	pgBatch := &pgx.Batch{}
+	for _, record := range batch {
+		pgBatch.Queue(r.upsertSQL,
+			record.RequestID,
+			record.ReceiveRequestAt,
+			record.SchedulerStartAt,
+			record.ServiceSelectedAt,
+			record.SelectedActor,
+		)
+	}
+
+	results := r.pool.SendBatch(ctx, pgBatch)
+
+	for range batch {
+		if _, err := results.Exec(); err != nil {
+			results.Close()
+			return fmt.Errorf("recorder batch upsert failed: %w", err)
+		}
+	}
+
+	if err := results.Close(); err != nil {
+		return fmt.Errorf("recorder batch close failed: %w", err)
+	}
+
 	return nil
 }
 
