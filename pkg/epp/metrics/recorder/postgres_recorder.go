@@ -58,10 +58,7 @@ func NewRecorder(ctx context.Context, cfg Config) (Recorder, error) {
 		return nil, err
 	}
 
-	connString, err := buildConnString(cfg)
-	if err != nil {
-		return nil, err
-	}
+	connString := buildConnString(cfg)
 
 	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
@@ -229,9 +226,9 @@ func (r *postgresRecorder) flushBatch(ctx context.Context, batch []SchedulerReco
 	return nil
 }
 
-func buildConnString(cfg Config) (string, error) {
+func buildConnString(cfg Config) string {
 	if strings.Contains(cfg.URL, "://") {
-		return cfg.URL, nil
+		return cfg.URL
 	}
 
 	host := cfg.URL
@@ -248,7 +245,7 @@ func buildConnString(cfg Config) (string, error) {
 		Path:   "/" + cfg.Name,
 	}
 
-	return u.String(), nil
+	return u.String()
 }
 
 func buildUpsertSQL(schema, table string) string {
