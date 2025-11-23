@@ -69,13 +69,11 @@ func NewDirectorWithConfig(
 	return &Director{
 		scheduler:             scheduler,
 		requestControlPlugins: *config,
-		datastore:           datastore,
-		scheduler:           scheduler,
-		admissionController: admissionController,
-		preRequestPlugins:   config.preRequestPlugins,
-		postResponsePlugins: config.postResponsePlugins,
-		schedulerRecorder:   config.schedulerRecorder,
-		defaultPriority:     0, // define default priority explicitly
+		datastore:             datastore,
+		admissionController:   admissionController,
+		preRequestPlugins:     config.preRequestPlugins,
+		schedulerRecorder:     config.schedulerRecorder,
+		defaultPriority:       0, // define default priority explicitly
 	}
 }
 
@@ -89,66 +87,20 @@ func NewDirectorWithConfig(
 // - Preparing the request context for the Envoy ext_proc filter to route the request.
 // - Running PostResponse plugins.
 type Director struct {
-<<<<<<< HEAD
 	datastore             Datastore
 	scheduler             Scheduler
 	admissionController   AdmissionController
 	requestControlPlugins Config
-=======
-	datastore           Datastore
-	scheduler           Scheduler
-	admissionController AdmissionController
-	preRequestPlugins   []PreRequest
-	postResponsePlugins []PostResponse
-	schedulerRecorder   schedrecorder.Recorder
->>>>>>> 49419fa (add postgresql to record scheduling metrics)
+	preRequestPlugins     []PreRequest
+	schedulerRecorder     schedrecorder.Recorder
 	// we just need a pointer to an int variable since priority is a pointer in InferenceObjective
 	// no need to set this in the constructor, since the value we want is the default int val
 	// and value types cannot be nil
 	defaultPriority int
 }
 
-<<<<<<< HEAD
 // getInferenceObjective fetches the inferenceObjective from the datastore otherwise creates a new one based on reqCtx.
 func (d *Director) getInferenceObjective(ctx context.Context, reqCtx *handlers.RequestContext) *v1alpha2.InferenceObjective {
-=======
-// HandleRequest orchestrates the request lifecycle.
-// It always returns the requestContext even in the error case, as the request context is used in error handling.
-func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestContext) (*handlers.RequestContext, error) {
-	logger := log.FromContext(ctx)
-	var scheduleRecord *schedrecorder.SchedulerRecord
-	if d.schedulerRecorder != nil {
-		scheduleRecord = &schedrecorder.SchedulerRecord{ReceiveRequestAt: time.Now().UTC().UnixMicro()}
-	}
-
-	// Parse Request, Resolve Target Models, and Determine Parameters
-	requestBodyMap := reqCtx.Request.Body
-	var ok bool
-	reqCtx.IncomingModelName, ok = requestBodyMap["model"].(string)
-
-	if !ok {
-		return reqCtx, errutil.Error{Code: errutil.BadRequest, Msg: "model not found in request body"}
-	}
-	if reqCtx.TargetModelName == "" {
-		// Default to incoming model name
-		reqCtx.TargetModelName = reqCtx.IncomingModelName
-	}
-	reqCtx.Request.Body["model"] = reqCtx.TargetModelName
-
-	requestBody, err := requtil.ExtractRequestBody(reqCtx.Request.Body)
-	if err != nil {
-		return reqCtx, errutil.Error{Code: errutil.BadRequest, Msg: fmt.Errorf("failed to extract request data: %w", err).Error()}
-	}
-	logger.V(logutil.VERBOSE).Info("Request body extracted", "requestBody", fmt.Sprintf("%+v", requestBody))
-	if scheduleRecord != nil && requestBody != nil && requestBody.ChatCompletions != nil {
-		// print requestBody structiure for debugging
-		// Use client-side request ID for tracking the request lifecycle in the recorder
-		// If not provided, the recorder will not persist any data for this request.
-		scheduleRecord.RequestID = requestBody.ChatCompletions.ClientSideID
-
-	}
-
->>>>>>> 49419fa (add postgresql to record scheduling metrics)
 	infObjective := d.datastore.ObjectiveGet(reqCtx.ObjectiveKey)
 	if infObjective == nil {
 		log.FromContext(ctx).V(logutil.VERBOSE).Info("No associated InferenceObjective found, using default", "objectiveKey", reqCtx.ObjectiveKey)
@@ -184,6 +136,10 @@ func (d *Director) resolveTargetModel(reqCtx *handlers.RequestContext) (*handler
 // It always returns the requestContext even in the error case, as the request context is used in error handling.
 func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestContext) (*handlers.RequestContext, error) {
 	logger := log.FromContext(ctx)
+	var scheduleRecord *schedrecorder.SchedulerRecord
+	if d.schedulerRecorder != nil {
+		scheduleRecord = &schedrecorder.SchedulerRecord{ReceiveRequestAt: time.Now().UTC().UnixMicro()}
+	}
 
 	// Resolve target model and update req context.
 	reqCtx, err := d.resolveTargetModel(reqCtx)
@@ -195,6 +151,13 @@ func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestCo
 	requestBody, err := requtil.ExtractRequestBody(reqCtx.Request.Body)
 	if err != nil {
 		return reqCtx, errutil.Error{Code: errutil.BadRequest, Msg: fmt.Errorf("failed to extract request data: %w", err).Error()}
+	}
+	logger.V(logutil.VERBOSE).Info("Request body extracted", "requestBody", fmt.Sprintf("%+v", requestBody))
+	if scheduleRecord != nil && requestBody != nil && requestBody.ChatCompletions != nil {
+		// print requestBody structiure for debugging
+		// Use client-side request ID for tracking the request lifecycle in the recorder
+		// If not provided, the recorder will not persist any data for this request.
+		scheduleRecord.RequestID = requestBody.ChatCompletions.ClientSideID
 	}
 
 	// Parse inference objective.
@@ -224,7 +187,6 @@ func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestCo
 	}
 	snapshotOfCandidatePods := d.toSchedulerPodMetrics(candidatePods)
 
-<<<<<<< HEAD
 	// Prepare per request data by running PrepareData plugins.
 	if d.runPrepareDataPlugins(ctx, reqCtx.SchedulingRequest, snapshotOfCandidatePods) != nil {
 		// Don't fail the request if PrepareData plugins fail.
@@ -237,13 +199,10 @@ func (d *Director) HandleRequest(ctx context.Context, reqCtx *handlers.RequestCo
 		return reqCtx, errutil.Error{Code: errutil.Internal, Msg: "request cannot be admitted"}
 	}
 
-	result, err := d.scheduler.Schedule(ctx, reqCtx.SchedulingRequest, snapshotOfCandidatePods)
-=======
 	if scheduleRecord != nil {
 		scheduleRecord.SchedulerStartAt = time.Now().UTC().UnixMicro()
 	}
-	result, err := d.scheduler.Schedule(ctx, reqCtx.SchedulingRequest, d.toSchedulerPodMetrics(candidatePods))
->>>>>>> 49419fa (add postgresql to record scheduling metrics)
+	result, err := d.scheduler.Schedule(ctx, reqCtx.SchedulingRequest, snapshotOfCandidatePods)
 	if err != nil {
 		return reqCtx, errutil.Error{Code: errutil.InferencePoolResourceExhausted, Msg: fmt.Errorf("failed to find target pod: %w", err).Error()}
 	}

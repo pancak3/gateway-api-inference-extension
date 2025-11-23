@@ -40,9 +40,8 @@ type Config struct {
 	responseReceivedPlugins  []ResponseReceived
 	responseStreamingPlugins []ResponseStreaming
 	responseCompletePlugins  []ResponseComplete
-	preRequestPlugins   []PreRequest
-	postResponsePlugins []PostResponse
-	schedulerRecorder   recorder.Recorder
+	preRequestPlugins        []PreRequest
+	schedulerRecorder        recorder.Recorder
 }
 
 // WithPreRequestPlugins sets the given plugins as the PreRequest plugins.
@@ -59,7 +58,6 @@ func (c *Config) WithResponseReceivedPlugins(plugins ...ResponseReceived) *Confi
 	return c
 }
 
-<<<<<<< HEAD
 // WithResponseStreamingPlugins sets the given plugins as the ResponseStreaming plugins.
 // If the Config has ResponseStreaming plugins already, this call replaces the existing plugins with the given ones.
 func (c *Config) WithResponseStreamingPlugins(plugins ...ResponseStreaming) *Config {
@@ -86,10 +84,6 @@ func (c *Config) WithAdmissionPlugins(plugins ...AdmissionPlugin) *Config {
 	return c
 }
 
-// AddPlugins adds the given plugins to the Config.
-// The type of each plugin is checked and added to the corresponding list of plugins in the Config.
-// If a plugin implements multiple plugin interfaces, it will be added to each corresponding list.
-=======
 // WithSchedulerRecorder configures the Recorder used to persist scheduler lifecycle metrics.
 func (c *Config) WithSchedulerRecorder(r recorder.Recorder) *Config {
 	c.schedulerRecorder = r
@@ -101,7 +95,9 @@ func (c *Config) SchedulerRecorder() recorder.Recorder {
 	return c.schedulerRecorder
 }
 
->>>>>>> 49419fa (add postgresql to record scheduling metrics)
+// AddPlugins adds the given plugins to the Config.
+// The type of each plugin is checked and added to the corresponding list of plugins in the Config.
+// If a plugin implements multiple plugin interfaces, it will be added to each corresponding list.
 func (c *Config) AddPlugins(pluginObjects ...plugins.Plugin) {
 	for _, plugin := range pluginObjects {
 		if preRequestPlugin, ok := plugin.(PreRequest); ok {
