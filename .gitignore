@@ -34,3 +34,7 @@ site
 
 # MacOS generated files
 **/.DS_Store
+
+
+# Devcontainer files
+.devcontainer/
