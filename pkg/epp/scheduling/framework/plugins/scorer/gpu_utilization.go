@@ -20,8 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"math"
-	"math/rand"
-	"time"
 
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/metrics"
 	"sigs.k8s.io/gateway-api-inference-extension/pkg/epp/plugins"
@@ -76,11 +74,11 @@ func (s *GPUUtilizationScorer) WithName(name string) *GPUUtilizationScorer {
 func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLMRequest, pods []types.Pod) map[types.Pod]float64 {
 	minUtil := math.MaxFloat64
 	maxUtil := -math.MaxFloat64
-	utilizations := make([]float64, 0, len(pods))
+	utilizations := make(map[types.Pod]float64, len(pods))
 
 	for _, pod := range pods {
 		util := pod.GetMetrics().GPUUtilization
-		utilizations = append(utilizations, util)
+		utilizations[pod] = util
 		if util < minUtil {
 			minUtil = util
 		}
@@ -89,9 +87,9 @@ func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *
 		}
 	}
 
+	scores := make(map[types.Pod]float64, len(pods))
 	if maxUtil == minUtil {
 		// All pods have the same utilization, return neutral scores
-		scores := make(map[types.Pod]float64, len(pods))
 		for _, pod := range pods {
 			scores[pod] = 1.0
 		}
@@ -99,26 +97,9 @@ func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *
 	}
 
 	// Create a map to hold the scores for each pod
-	scores := make(map[types.Pod]float64, len(pods))
-	for i, pod := range pods {
-		scores[pod] = (maxUtil - utilizations[i]) / (maxUtil - minUtil)
+	for _, pod := range pods {
+		scores[pod] = (maxUtil - utilizations[pod]) / (maxUtil - minUtil)
 	}
-	// if scores are the same, give random small delta to avoid tie
-	if len(pods) > 1 {
-		firstScore := scores[pods[0]]
-		allSame := true
-		for _, score := range scores {
-			if score != firstScore {
-				allSame = false
-				break
-			}
-		}
-		if allSame {
-			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-			for _, pod := range pods {
-				scores[pod] += r.Float64() * 1e-9
-			}
-		}
-	}
+
 	return scores
 }
