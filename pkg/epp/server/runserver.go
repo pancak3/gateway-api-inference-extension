@@ -83,6 +83,7 @@ const (
 	DefaultLoraInfoMetric                   = "vllm:lora_requests_info"     // default for --lora-info-metric
 	DefaultCacheInfoMetric                  = "vllm:cache_config_info"      // default for --cache-info-metric
 	DefaultRunningRequestsMetric            = "vllm:num_requests_running"   // default for --running-requests-metric
+	DefaultGPUUtilizationMetric             = "vllm:gpu_utilization_perc"   // default for --gpu-utilization-metric
 	DefaultCertPath                         = ""                            // default for --cert-path
 	DefaultConfigFile                       = ""                            // default for --config-file
 	DefaultConfigText                       = ""                            // default for --config-text

@@ -115,6 +115,15 @@ func (p *PodMetricsClientImpl) promToPodMetrics(
 		}
 	}
 
+	if p.MetricMapping.GPUUtilization != nil {
+		gpu, err := p.getMetric(metricFamilies, *p.MetricMapping.GPUUtilization)
+		if err == nil {
+			updated.GPUUtilization = gpu.GetGauge().GetValue()
+		} else {
+			errs = multierr.Append(errs, err)
+		}
+	}
+
 	// Handle LoRA metrics (only if all LoRA MetricSpecs are present)
 	if p.MetricMapping.LoraRequestInfo != nil {
 		loraMetrics, err := p.getLatestLoraMetric(metricFamilies)

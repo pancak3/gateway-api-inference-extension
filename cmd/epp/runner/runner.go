@@ -136,6 +136,8 @@ var (
 	cacheInfoMetric = flag.String("cache-info-metric", runserver.DefaultCacheInfoMetric, "Prometheus metric for the cache info metrics.")
 	// Running requests metric
 	runningRequestsMetric = flag.String("running-requests-metric", runserver.DefaultRunningRequestsMetric, "Prometheus metric for the number of running requests.")
+	// GPU utilization metric
+	gpuUtilizationMetric = flag.String("gpu-utilization-metric", runserver.DefaultGPUUtilizationMetric, "Prometheus metric for the GPU utilization.")
 	// metrics related flags
 	refreshMetricsInterval           = flag.Duration("refresh-metrics-interval", runserver.DefaultRefreshMetricsInterval, "interval to refresh metrics")
 	refreshPrometheusMetricsInterval = flag.Duration("refresh-prometheus-metrics-interval", runserver.DefaultRefreshPrometheusMetricsInterval, "interval to flush prometheus metrics")
@@ -459,6 +461,7 @@ func (r *Runner) registerInTreePlugins() {
 	plugins.Register(scorer.KvCacheUtilizationScorerType, scorer.KvCacheUtilizationScorerFactory)
 	plugins.Register(scorer.QueueScorerType, scorer.QueueScorerFactory)
 	plugins.Register(scorer.RunningRequestsScorerType, scorer.RunningRequestsScorerFactory)
+	plugins.Register(scorer.GPUUtilizationScorerType, scorer.GPUUtilizationScorerFactory)
 	plugins.Register(scorer.LoraAffinityScorerType, scorer.LoraAffinityScorerFactory)
 	// Latency predictor plugins
 	plugins.Register(slo_aware_router.SLOAwareRouterPluginType, slo_aware_router.SLOAwareRouterFactory)
@@ -592,6 +595,7 @@ func setupMetricsV1(setupLog logr.Logger) (datalayer.EndpointFactory, error) {
 		*loraInfoMetric,
 		*cacheInfoMetric,
 		*runningRequestsMetric,
+		*gpuUtilizationMetric,
 	)
 	if err != nil {
 		setupLog.Error(err, "Failed to create metric mapping from flags.")
@@ -639,7 +643,7 @@ func setupDatalayer(logger logr.Logger) (datalayer.EndpointFactory, error) {
 	extractor, err := dlmetrics.NewExtractor(*totalQueuedRequestsMetric,
 		*totalRunningRequestsMetric,
 		*kvCacheUsagePercentageMetric,
-		*loraInfoMetric, *cacheInfoMetric, *runningRequestsMetric)
+		*loraInfoMetric, *cacheInfoMetric, *runningRequestsMetric, *gpuUtilizationMetric)
 
 	if err != nil {
 		return nil, err

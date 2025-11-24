@@ -38,6 +38,8 @@ type Metrics struct {
 
 	// UpdateTime records the last time when the metrics were updated.
 	UpdateTime time.Time
+
+	GPUUtilization float64
 }
 
 // NewMetrics initializes a new empty Metrics object.
@@ -81,5 +83,6 @@ func (m *Metrics) Clone() *Metrics {
 		CacheBlockSize:          m.CacheBlockSize,
 		CacheNumGPUBlocks:       m.CacheNumGPUBlocks,
 		UpdateTime:              m.UpdateTime,
+		GPUUtilization:          m.GPUUtilization,
 	}
 }
