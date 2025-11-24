@@ -71,12 +71,11 @@ func (s *GPUUtilizationScorer) WithName(name string) *GPUUtilizationScorer {
 
 // Score returns the scoring result for the given list of pods based on context.
 func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLMRequest, pods []types.Pod) map[types.Pod]float64 {
-
 	scores := make(map[types.Pod]float64, len(pods))
 
 	// Create a map to hold the scores for each pod
 	for _, pod := range pods {
-		scores[pod] = 1 - min(pod.GetMetrics().GPUUtilization, 1.0)
+		scores[pod] = 1.0 - min(pod.GetMetrics().GPUUtilization, 1.0)
 	}
 
 	return scores
