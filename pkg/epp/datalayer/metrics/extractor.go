@@ -55,6 +55,7 @@ func Produces() map[string]any {
 	return map[string]any{
 		metrics.WaitingQueueSizeKey:    int(0),
 		metrics.KVCacheUsagePercentKey: float64(0),
+		metrics.RunningQueueSizeKey:    int(0),
 		metrics.ActiveModelsKey:        map[string]int{},
 		metrics.WaitingModelsKey:       map[string]int{},
 		metrics.MaxActiveModelsKey:     int(0),

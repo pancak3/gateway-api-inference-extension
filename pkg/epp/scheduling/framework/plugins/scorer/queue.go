@@ -77,7 +77,7 @@ func (s *QueueScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLM
 
 	// Iterate through the remaining pods to find min and max
 	for _, pod := range pods {
-		queueSize := pod.GetMetrics().RunningQueueSize
+		queueSize := pod.GetMetrics().WaitingQueueSize
 		if queueSize < minQueueSize {
 			minQueueSize = queueSize
 		}
@@ -92,7 +92,7 @@ func (s *QueueScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLM
 			// If all pods have the same queue size, return a neutral score
 			return 1.0
 		}
-		return float64(maxQueueSize-pod.GetMetrics().RunningQueueSize) / float64(maxQueueSize-minQueueSize)
+		return float64(maxQueueSize-pod.GetMetrics().WaitingQueueSize) / float64(maxQueueSize-minQueueSize)
 	}
 
 	// Create a map to hold the scores for each pod
