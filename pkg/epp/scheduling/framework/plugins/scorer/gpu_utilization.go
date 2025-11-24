@@ -74,10 +74,11 @@ func (s *GPUUtilizationScorer) WithName(name string) *GPUUtilizationScorer {
 func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLMRequest, pods []types.Pod) map[types.Pod]float64 {
 	minUtil := math.MaxFloat64
 	maxUtil := -math.MaxFloat64
+	utilizations := make([]float64, 0, len(pods))
 
-	// Iterate through the remaining pods to find min and max
 	for _, pod := range pods {
 		util := pod.GetMetrics().GPUUtilization
+		utilizations = append(utilizations, util)
 		if util < minUtil {
 			minUtil = util
 		}
@@ -86,19 +87,19 @@ func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *
 		}
 	}
 
-	// podScoreFunc calculates the score based on the GPU utilization of each pod. Higher utilization gets a lower score.
-	podScoreFunc := func(pod types.Pod) float64 {
-		if maxUtil == minUtil {
-			// If all pods have the same utilization, return a neutral score
-			return 1.0
+	if maxUtil == minUtil {
+		// All pods have the same utilization, return neutral scores
+		scores := make(map[types.Pod]float64, len(pods))
+		for _, pod := range pods {
+			scores[pod] = 1.0
 		}
-		return (maxUtil - pod.GetMetrics().GPUUtilization) / (maxUtil - minUtil)
+		return scores
 	}
 
 	// Create a map to hold the scores for each pod
 	scores := make(map[types.Pod]float64, len(pods))
-	for _, pod := range pods {
-		scores[pod] = podScoreFunc(pod)
+	for i, pod := range pods {
+		scores[pod] = (maxUtil - utilizations[i]) / (maxUtil - minUtil)
 	}
 	return scores
 }
