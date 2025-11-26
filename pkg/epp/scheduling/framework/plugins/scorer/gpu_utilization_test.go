@@ -36,9 +36,9 @@ func TestGPUUtilizationScorer(t *testing.T) {
 		{
 			name: "Different GPU utilization",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.8}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.5}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.2}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.8}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.2}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 0.0, // Highest utilization (0.8) gets lowest score
@@ -49,8 +49,8 @@ func TestGPUUtilizationScorer(t *testing.T) {
 		{
 			name: "Same GPU utilization",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.5}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.5}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 1.0, // When all pods have the same utilization, they get the same neutral score
@@ -60,8 +60,8 @@ func TestGPUUtilizationScorer(t *testing.T) {
 		{
 			name: "Zero GPU utilization",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.0}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilization: 0.0}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.0}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.0}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 1.0,

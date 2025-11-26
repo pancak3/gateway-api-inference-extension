@@ -59,7 +59,7 @@ func (s *GPUUtilizationScorer) TypedName() plugins.TypedName {
 // Consumes returns the list of data that is consumed by the plugin.
 func (s *GPUUtilizationScorer) Consumes() map[string]any {
 	return map[string]any{
-		metrics.GPUUtilizationKey: float64(0),
+		metrics.GPUUtilizationPercentKey: float64(0),
 	}
 }
 
@@ -73,9 +73,8 @@ func (s *GPUUtilizationScorer) WithName(name string) *GPUUtilizationScorer {
 func (s *GPUUtilizationScorer) Score(_ context.Context, _ *types.CycleState, _ *types.LLMRequest, pods []types.Pod) map[types.Pod]float64 {
 	scores := make(map[types.Pod]float64, len(pods))
 
-	// Create a map to hold the scores for each pod
 	for _, pod := range pods {
-		scores[pod] = 1.0 - min(pod.GetMetrics().GPUUtilization, 1.0)
+		scores[pod] = 1.0 - min(pod.GetMetrics().GPUUtilizationPercent, 1.0)
 	}
 
 	return scores

@@ -556,6 +556,28 @@ func TestPromToPodMetrics(t *testing.T) {
 			},
 			expectedErr: errors.New("strconv.Atoi: parsing \"invalid\": invalid syntax"),
 		},
+		{
+			name: "gpu utilization with new labels",
+			metricFamilies: map[string]*dto.MetricFamily{
+				"vllm_gpu": makeMetricFamily("vllm_gpu",
+					makeMetric(map[string]string{
+						"gpu_utilization_perc":           "0.75",
+						"estimated_gpu_utilization_perc": "0.70",
+					}, 0.8, 1000),
+				),
+			},
+			mapping: &MetricMapping{
+				GPUUtilization: &MetricSpec{MetricName: "vllm_gpu"},
+			},
+			existingMetrics: &MetricsState{},
+			expectedMetrics: &MetricsState{
+				GPUUtilizationPercent:   0.75,
+				GPUEstimatedUtilPercent: 0.70,
+				ActiveModels:            map[string]int{},
+				WaitingModels:           map[string]int{},
+			},
+			expectedErr: nil,
+		},
 	}
 
 	for _, tc := range tests {

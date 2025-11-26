@@ -118,7 +118,29 @@ func (p *PodMetricsClientImpl) promToPodMetrics(
 	if p.MetricMapping.GPUUtilization != nil {
 		gpu, err := p.getMetric(metricFamilies, *p.MetricMapping.GPUUtilization)
 		if err == nil {
-			updated.GPUUtilization = gpu.GetGauge().GetValue()
+			updated.GPUUtilizationPercent = gpu.GetGauge().GetValue()
+
+			// Check labels for new format
+			for _, label := range gpu.GetLabel() {
+				switch label.GetName() {
+				case "estimated_gpu_memory_utilization_perc", "vllm:estimated_gpu_memory_utilization_perc":
+					if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+						updated.GPUEstimatedMemUtilPercent = val
+					}
+				case "estimated_gpu_utilization_perc", "vllm:estimated_gpu_utilization_perc":
+					if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+						updated.GPUEstimatedUtilPercent = val
+					}
+				case "gpu_memory_utilization_perc", "vllm:gpu_memory_utilization_perc":
+					if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+						updated.GPUMemUtilPercent = val
+					}
+				case "gpu_utilization_perc", "vllm:gpu_utilization_perc":
+					if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+						updated.GPUUtilizationPercent = val
+					}
+				}
+			}
 		} else {
 			errs = multierr.Append(errs, err)
 		}

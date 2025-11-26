@@ -39,7 +39,12 @@ type Metrics struct {
 	// UpdateTime records the last time when the metrics were updated.
 	UpdateTime time.Time
 
-	GPUUtilization float64
+	GPUUtilizationPercent float64
+
+	// New metrics from labels
+	GPUEstimatedMemUtilPercent float64
+	GPUEstimatedUtilPercent    float64
+	GPUMemUtilPercent          float64
 }
 
 // NewMetrics initializes a new empty Metrics object.
@@ -73,16 +78,19 @@ func (m *Metrics) Clone() *Metrics {
 		waitingModels[key] = value
 	}
 	return &Metrics{
-		ActiveModels:            activeModels,
-		WaitingModels:           waitingModels,
-		MaxActiveModels:         m.MaxActiveModels,
-		RunningQueueSize:        m.RunningQueueSize,
-		WaitingQueueSize:        m.WaitingQueueSize,
-		KVCacheUsagePercent:     m.KVCacheUsagePercent,
-		KvCacheMaxTokenCapacity: m.KvCacheMaxTokenCapacity,
-		CacheBlockSize:          m.CacheBlockSize,
-		CacheNumGPUBlocks:       m.CacheNumGPUBlocks,
-		UpdateTime:              m.UpdateTime,
-		GPUUtilization:          m.GPUUtilization,
+		ActiveModels:               activeModels,
+		WaitingModels:              waitingModels,
+		MaxActiveModels:            m.MaxActiveModels,
+		RunningQueueSize:           m.RunningQueueSize,
+		WaitingQueueSize:           m.WaitingQueueSize,
+		KVCacheUsagePercent:        m.KVCacheUsagePercent,
+		KvCacheMaxTokenCapacity:    m.KvCacheMaxTokenCapacity,
+		CacheBlockSize:             m.CacheBlockSize,
+		CacheNumGPUBlocks:          m.CacheNumGPUBlocks,
+		UpdateTime:                 m.UpdateTime,
+		GPUUtilizationPercent:      m.GPUUtilizationPercent,
+		GPUEstimatedMemUtilPercent: m.GPUEstimatedMemUtilPercent,
+		GPUEstimatedUtilPercent:    m.GPUEstimatedUtilPercent,
+		GPUMemUtilPercent:          m.GPUMemUtilPercent,
 	}
 }

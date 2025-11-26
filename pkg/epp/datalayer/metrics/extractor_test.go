@@ -35,17 +35,18 @@ const (
 	defaultKvCacheUsagePercentageMetric = "vllm:gpu_cache_usage_perc"
 	defaultLoraInfoMetric               = "vllm:lora_requests_info"
 	defaultCacheInfoMetric              = "vllm:cache_config_info"
+	defaultGPUUtilizationMetric         = "vllm:gpu_utilization_perc"
 )
 
 func TestExtractorExtract(t *testing.T) {
 	ctx := context.Background()
 
-	if _, err := NewExtractor("vllm: dummy", "", "", "", ""); err == nil {
+	if _, err := NewExtractor("vllm: dummy", "", "", "", "", ""); err == nil {
 		t.Error("expected to fail to create extractor with invalid specification")
 	}
 
 	extractor, err := NewExtractor(defaultTotalQueuedRequestsMetric, defaultTotalRunningRequestsMetric,
-		defaultKvCacheUsagePercentageMetric, defaultLoraInfoMetric, defaultCacheInfoMetric)
+		defaultKvCacheUsagePercentageMetric, defaultLoraInfoMetric, defaultCacheInfoMetric, defaultGPUUtilizationMetric)
 	if err != nil {
 		t.Fatalf("failed to create extractor: %v", err)
 	}
@@ -159,6 +160,24 @@ func TestExtractorExtract(t *testing.T) {
 								},
 							},
 							Gauge: &dto.Gauge{Value: ptr.To(1.0)},
+						},
+					},
+				},
+				defaultGPUUtilizationMetric: &dto.MetricFamily{
+					Type: dto.MetricType_GAUGE.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Gauge: &dto.Gauge{Value: ptr.To(0.8)},
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("gpu_utilization_perc"),
+									Value: proto.String("0.75"),
+								},
+								{
+									Name:  proto.String("estimated_gpu_utilization_perc"),
+									Value: proto.String("0.70"),
+								},
+							},
 						},
 					},
 				},

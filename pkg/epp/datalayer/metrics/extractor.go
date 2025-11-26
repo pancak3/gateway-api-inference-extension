@@ -53,14 +53,17 @@ type Extractor struct {
 
 func Produces() map[string]any {
 	return map[string]any{
-		metrics.WaitingQueueSizeKey:    int(0),
-		metrics.KVCacheUsagePercentKey: float64(0),
-		metrics.RunningQueueSizeKey:    int(0),
-		metrics.GPUUtilizationKey:      float64(0),
-		metrics.ActiveModelsKey:        map[string]int{},
-		metrics.WaitingModelsKey:       map[string]int{},
-		metrics.MaxActiveModelsKey:     int(0),
-		metrics.UpdateTimeKey:          time.Time{},
+		metrics.WaitingQueueSizeKey:           int(0),
+		metrics.KVCacheUsagePercentKey:        float64(0),
+		metrics.RunningQueueSizeKey:           int(0),
+		metrics.GPUUtilizationPercentKey:      float64(0),
+		metrics.GPUEstimatedMemUtilPercentKey: float64(0),
+		metrics.GPUEstimatedUtilPercentKey:    float64(0),
+		metrics.GPUMemUtilPercentKey:          float64(0),
+		metrics.ActiveModelsKey:               map[string]int{},
+		metrics.WaitingModelsKey:              map[string]int{},
+		metrics.MaxActiveModelsKey:            int(0),
+		metrics.UpdateTimeKey:                 time.Time{},
 	}
 }
 
@@ -153,7 +156,8 @@ func (ext *Extractor) Extract(ctx context.Context, data any, ep datalayer.Endpoi
 		if metric, err := spec.getLatestMetric(families); err != nil {
 			errs = append(errs, err)
 		} else {
-			clone.GPUUtilization = extractValue(metric)
+			clone.GPUUtilizationPercent = extractValue(metric)
+			populateGPUUtilizationMetrics(clone, metric, &errs)
 			updated = true
 		}
 	}
@@ -224,6 +228,38 @@ func addAdapters(m map[string]int, csv string) {
 	for _, name := range strings.Split(csv, ",") {
 		if trimmed := strings.TrimSpace(name); trimmed != "" {
 			m[trimmed] = 0
+		}
+	}
+}
+
+// populateGPUUtilizationMetrics updates the metrics with GPU utilization info from the metric labels.
+func populateGPUUtilizationMetrics(clone *datalayer.Metrics, metric *dto.Metric, errs *[]error) {
+	for _, label := range metric.GetLabel() {
+		switch label.GetName() {
+		case "estimated_gpu_memory_utilization_perc", "vllm:estimated_gpu_memory_utilization_perc":
+			if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+				clone.GPUEstimatedMemUtilPercent = val
+			} else {
+				*errs = append(*errs, err)
+			}
+		case "estimated_gpu_utilization_perc", "vllm:estimated_gpu_utilization_perc":
+			if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+				clone.GPUEstimatedUtilPercent = val
+			} else {
+				*errs = append(*errs, err)
+			}
+		case "gpu_memory_utilization_perc", "vllm:gpu_memory_utilization_perc":
+			if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+				clone.GPUMemUtilPercent = val
+			} else {
+				*errs = append(*errs, err)
+			}
+		case "gpu_utilization_perc", "vllm:gpu_utilization_perc":
+			if val, err := strconv.ParseFloat(label.GetValue(), 64); err == nil {
+				clone.GPUUtilizationPercent = val
+			} else {
+				*errs = append(*errs, err)
+			}
 		}
 	}
 }
