@@ -35,7 +35,6 @@ const (
 	InferencePoolComponent      = "inference_pool"
 	InferenceExtension          = "inference_extension"
 
-<<<<<<< HEAD
 	KVCacheUsagePercentKey        = "KVCacheUsagePercent"
 	WaitingQueueSizeKey           = "WaitingQueueSize"
 	RunningQueueSizeKey           = "RunningQueueSize"
@@ -47,20 +46,6 @@ const (
 	ActiveModelsKey               = "ActiveModels"
 	WaitingModelsKey              = "WaitingModels"
 	UpdateTimeKey                 = "UpdateTime"
-)
-=======
-	KVCacheUsagePercentKey        = "KVCacheUsagePercent"
-	WaitingQueueSizeKey           = "WaitingQueueSize"
-	RunningRequestsKey            = "RunningRequests"
-	GPUUtilizationPercentKey      = "GPUUtilizationPercent"
-	GPUEstimatedMemUtilPercentKey = "GPUEstimatedMemUtilPercent"
-	GPUEstimatedUtilPercentKey    = "GPUEstimatedUtilPercent"
-	GPUMemUtilPercentKey          = "GPUMemUtilPercent"
-	MaxActiveModelsKey            = "MaxActiveModels"
-	ActiveModelsKey               = "ActiveModels"
-	WaitingModelsKey              = "WaitingModels"
-	UpdateTimeKey                 = "UpdateTime"
->>>>>>> 9fd4786 (add gpu util scorer)
 )
 
 var (

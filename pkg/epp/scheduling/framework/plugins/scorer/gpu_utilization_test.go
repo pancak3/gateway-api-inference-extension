@@ -41,9 +41,9 @@ func TestGPUUtilizationScorer(t *testing.T) {
 				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.2}},
 			},
 			expectedScoresPod: map[int]float64{
-				0: 0.0, // Highest utilization (0.8) gets lowest score
-				1: 0.5, // Medium utilization (0.5) gets medium score
-				2: 1.0, // Lowest utilization (0.2) gets highest score
+				0: 0.2, // 1.0 - 0.8 = 0.2
+				1: 0.5, // 1.0 - 0.5 = 0.5
+				2: 0.8, // 1.0 - 0.2 = 0.8
 			},
 		},
 		{
@@ -53,8 +53,8 @@ func TestGPUUtilizationScorer(t *testing.T) {
 				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{GPUUtilizationPercent: 0.5}},
 			},
 			expectedScoresPod: map[int]float64{
-				0: 1.0, // When all pods have the same utilization, they get the same neutral score
-				1: 1.0,
+				0: 0.5, // 1.0 - 0.5 = 0.5
+				1: 0.5,
 			},
 		},
 		{
