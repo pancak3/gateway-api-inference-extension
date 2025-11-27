@@ -80,15 +80,23 @@ func (s *StreamingServer) HandleResponseBodyModelStreaming(ctx context.Context, 
 	if err != nil {
 		logger.Error(err, "error in HandleResponseBodyStreaming")
 	}
+
+	// Parse usage if present in the current chunk.
+	// We check for "usage" string as an optimization to avoid parsing every chunk.
+	if strings.Contains(responseText, "\"usage\"") {
+		resp := parseRespForUsage(ctx, responseText)
+		if resp.Usage.TotalTokens != 0 || resp.Usage.CompletionTokens != 0 || resp.Usage.PromptTokens != 0 {
+			reqCtx.Usage = resp.Usage
+		}
+	}
+
 	if strings.Contains(responseText, streamingEndMsg) {
 		reqCtx.ResponseComplete = true
-		resp := parseRespForUsage(ctx, responseText)
-		reqCtx.Usage = resp.Usage
-		metrics.RecordInputTokens(reqCtx.IncomingModelName, reqCtx.TargetModelName, resp.Usage.PromptTokens)
-		metrics.RecordOutputTokens(reqCtx.IncomingModelName, reqCtx.TargetModelName, resp.Usage.CompletionTokens)
+		metrics.RecordInputTokens(reqCtx.IncomingModelName, reqCtx.TargetModelName, reqCtx.Usage.PromptTokens)
+		metrics.RecordOutputTokens(reqCtx.IncomingModelName, reqCtx.TargetModelName, reqCtx.Usage.CompletionTokens)
 		cachedToken := 0
-		if resp.Usage.PromptTokenDetails != nil {
-			cachedToken = resp.Usage.PromptTokenDetails.CachedTokens
+		if reqCtx.Usage.PromptTokenDetails != nil {
+			cachedToken = reqCtx.Usage.PromptTokenDetails.CachedTokens
 		}
 		metrics.RecordPromptCachedTokens(reqCtx.IncomingModelName, reqCtx.TargetModelName, cachedToken)
 		_, err := s.director.HandleResponseBodyComplete(ctx, reqCtx)

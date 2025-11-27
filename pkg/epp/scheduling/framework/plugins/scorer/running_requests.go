@@ -60,7 +60,7 @@ func (s *RunningRequestsScorer) TypedName() plugins.TypedName {
 // Consumes returns the list of data that is consumed by the plugin.
 func (s *RunningRequestsScorer) Consumes() map[string]any {
 	return map[string]any{
-		metrics.RunningQueueSizeKey: int(0),
+		metrics.NumRequestsRunningKey: int(0),
 	}
 }
 
@@ -77,7 +77,7 @@ func (s *RunningRequestsScorer) Score(_ context.Context, _ *types.CycleState, _ 
 
 	// Iterate through the remaining pods to find min and max
 	for _, pod := range pods {
-		runningRequests := pod.GetMetrics().RunningQueueSize
+		runningRequests := pod.GetMetrics().NumRequestsRunning
 		if runningRequests < minRunningRequests {
 			minRunningRequests = runningRequests
 		}
@@ -92,7 +92,7 @@ func (s *RunningRequestsScorer) Score(_ context.Context, _ *types.CycleState, _ 
 			// If all pods have the same running requests, return a neutral score
 			return 1.0
 		}
-		return float64(maxRunningRequests-pod.GetMetrics().RunningQueueSize) / float64(maxRunningRequests-minRunningRequests)
+		return float64(maxRunningRequests-pod.GetMetrics().NumRequestsRunning) / float64(maxRunningRequests-minRunningRequests)
 	}
 
 	// Create a map to hold the scores for each pod

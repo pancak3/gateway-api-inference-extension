@@ -34,6 +34,7 @@ type MetricMapping struct {
 	KVCacheUtilization   *MetricSpec
 	LoraRequestInfo      *MetricSpec
 	CacheConfigInfo      *MetricSpec
+	RunningRequests      *MetricSpec
 	GPUUtilization       *MetricSpec
 }
 
@@ -96,7 +97,7 @@ func stringToMetricSpec(specStr string) (*MetricSpec, error) {
 }
 
 // NewMetricMapping creates a MetricMapping from string values.
-func NewMetricMapping(queuedStr, runningStr, kvUsageStr, loraReqInfoStr, cacheInfoMetric, gpuUtilizationStr string) (*MetricMapping, error) {
+func NewMetricMapping(queuedStr, runningStr, kvUsageStr, loraReqInfoStr, cacheInfoMetric, runningRequestsStr, gpuUtilizationStr string) (*MetricMapping, error) {
 	queuedSpec, err := stringToMetricSpec(queuedStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing WaitingRequests: %w", err)
@@ -119,6 +120,11 @@ func NewMetricMapping(queuedStr, runningStr, kvUsageStr, loraReqInfoStr, cacheIn
 		return nil, fmt.Errorf("error parsing cacheInfoMetric: %w", err)
 	}
 
+	runningRequestsSpec, err := stringToMetricSpec(runningRequestsStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing runningRequestsStr: %w", err)
+	}
+
 	gpuUtilizationSpec, err := stringToMetricSpec(gpuUtilizationStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing gpuUtilizationStr: %w", err)
@@ -130,6 +136,7 @@ func NewMetricMapping(queuedStr, runningStr, kvUsageStr, loraReqInfoStr, cacheIn
 		KVCacheUtilization:   kvUsageSpec,
 		LoraRequestInfo:      loraReqInfoSpec,
 		CacheConfigInfo:      cacheInfoSpec,
+		RunningRequests:      runningRequestsSpec,
 		GPUUtilization:       gpuUtilizationSpec,
 	}
 

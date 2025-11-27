@@ -38,6 +38,7 @@ const (
 	KVCacheUsagePercentKey        = "KVCacheUsagePercent"
 	WaitingQueueSizeKey           = "WaitingQueueSize"
 	RunningQueueSizeKey           = "RunningQueueSize"
+	NumRequestsRunningKey         = "NumRequestsRunning"
 	GPUUtilizationPercentKey      = "GPUUtilizationPercent"
 	GPUEstimatedMemUtilPercentKey = "GPUEstimatedMemUtilPercent"
 	GPUEstimatedUtilPercentKey    = "GPUEstimatedUtilPercent"

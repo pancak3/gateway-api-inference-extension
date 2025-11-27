@@ -36,9 +36,9 @@ func TestRunningRequestsScorer(t *testing.T) {
 		{
 			name: "Different running requests",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 10}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 5}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 0}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 10}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 0}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 0.0, // Most running requests (10) gets lowest score
@@ -49,8 +49,8 @@ func TestRunningRequestsScorer(t *testing.T) {
 		{
 			name: "Same running requests",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 5}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 5}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 5}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 1.0, // When all pods have the same running requests, they get the same neutral score
@@ -60,8 +60,8 @@ func TestRunningRequestsScorer(t *testing.T) {
 		{
 			name: "Zero running requests",
 			pods: []types.Pod{
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 0}},
-				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{RunningQueueSize: 0}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 0}},
+				&types.PodMetrics{Pod: &backend.Pod{}, MetricsState: &backendmetrics.MetricsState{NumRequestsRunning: 0}},
 			},
 			expectedScoresPod: map[int]float64{
 				0: 1.0,

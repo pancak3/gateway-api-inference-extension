@@ -71,8 +71,8 @@ func Produces() map[string]any {
 // configured with the given metrics' specifications.
 // These are mandatory metrics per the MSP specification, and are used
 // as the basis for the built-in scheduling plugins.
-func NewExtractor(queueSpec, runningSpec, kvusageSpec, loraSpec, cacheInfoSpec, gpuUtilizationSpec string) (*Extractor, error) {
-	mapping, err := NewMapping(queueSpec, runningSpec, kvusageSpec, loraSpec, cacheInfoSpec, gpuUtilizationSpec)
+func NewExtractor(queueSpec, runningSpec, kvusageSpec, loraSpec, cacheInfoSpec, runningRequestsSpec, gpuUtilizationSpec string) (*Extractor, error) {
+	mapping, err := NewMapping(queueSpec, runningSpec, kvusageSpec, loraSpec, cacheInfoSpec, runningRequestsSpec, gpuUtilizationSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create extractor metrics Mapping - %w", err)
 	}
@@ -115,6 +115,15 @@ func (ext *Extractor) Extract(ctx context.Context, data any, ep datalayer.Endpoi
 	}
 
 	if spec := ext.mapping.TotalRunningRequests; spec != nil { // extract running requests
+		if metric, err := spec.getLatestMetric(families); err != nil {
+			errs = append(errs, err)
+		} else {
+			clone.RunningQueueSize = int(extractValue(metric))
+			updated = true
+		}
+	}
+
+	if spec := ext.mapping.RunningRequests; spec != nil { // extract running requests
 		if metric, err := spec.getLatestMetric(families); err != nil {
 			errs = append(errs, err)
 		} else {

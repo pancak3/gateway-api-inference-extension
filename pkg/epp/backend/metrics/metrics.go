@@ -106,6 +106,15 @@ func (p *PodMetricsClientImpl) promToPodMetrics(
 		}
 	}
 
+	if p.MetricMapping.RunningRequests != nil {
+		running, err := p.getMetric(metricFamilies, *p.MetricMapping.RunningRequests)
+		if err == nil {
+			updated.NumRequestsRunning = int(running.GetGauge().GetValue())
+		} else {
+			errs = multierr.Append(errs, err)
+		}
+	}
+
 	if p.MetricMapping.KVCacheUtilization != nil {
 		usage, err := p.getMetric(metricFamilies, *p.MetricMapping.KVCacheUtilization)
 		if err == nil {
@@ -229,6 +238,7 @@ func (p *PodMetricsClientImpl) getLatestLoraMetric(metricFamilies map[string]*dt
 	for _, m := range loraRequests.GetMetric() {
 		running := ""
 		waiting := ""
+		maxLora := ""
 		// Check if the metric has the expected LoRA labels.
 		for _, lp := range m.GetLabel() {
 			switch lp.GetName() {
@@ -236,10 +246,12 @@ func (p *PodMetricsClientImpl) getLatestLoraMetric(metricFamilies map[string]*dt
 				running = lp.GetValue()
 			case LoraInfoWaitingAdaptersMetricName:
 				waiting = lp.GetValue()
+			case LoraInfoMaxAdaptersMetricName:
+				maxLora = lp.GetValue()
 			}
 		}
-		// Ignore metrics with both labels empty.
-		if running == "" && waiting == "" {
+		// Ignore metrics with all relevant labels empty.
+		if running == "" && waiting == "" && maxLora == "" {
 			continue
 		}
 

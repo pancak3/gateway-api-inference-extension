@@ -104,8 +104,9 @@ type ChatCompletionsRequest struct {
 	ChatTemplate              string                 `json:"chat_template,omitempty"`
 	ReturnAssistantTokensMask bool                   `json:"return_assistant_tokens_mask,omitempty"`
 	ContinueFinalMessage      bool                   `json:"continue_final_message,omitempty"`
-	AddGenerationPrompt       bool                   `json:"add_generation_prompt,omitempty"`
+	AddGenerationPrompt       *bool                  `json:"add_generation_prompt,omitempty"`
 	ChatTemplateKWArgs        map[string]interface{} `json:"chat_template_kwargs,omitempty"`
+	TruncatePromptTokens      *int                   `json:"truncate_prompt_tokens,omitempty"`
 	// CacheSalt is an optional request parameter to isolate prefix caches for security reasons.
 	CacheSalt    string `json:"cache_salt,omitempty"`
 	ClientSideID string `json:"client_side_id,omitempty"` // non-standard extension
